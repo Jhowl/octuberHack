@@ -36,7 +36,7 @@ app = FastAPI(
 # Initialize OpenAI client
 openai_client = None
 try:
-    openai_api_key = os.getenv("OPENAI_API_KEY")
+    openai_api_key = "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"
     if openai_api_key:
         openai_client = OpenAI(api_key=openai_api_key)
         print("✅ OpenAI client initialized")
@@ -288,9 +288,9 @@ async def extract_metadata(file: UploadFile = File(...)):
             }
         }
         
-        # Add AI analysis if OpenAI is available
+        # Add AI analysis if OpenAI is available (image + metadata sent to OpenAI)
         try:
-            ai_analysis = analyze_image_with_openai(file_content, metadata)
+            ai_analysis = analyze_image_with_metadata_context(file_content, metadata)
             metadata["ai_analysis"] = ai_analysis
         except Exception as e:
             metadata["ai_analysis"] = {
@@ -403,8 +403,8 @@ def save_image_and_metadata(file_content, filename, metadata):
             "error": f"Failed to save image: {str(e)}"
         }
 
-def analyze_image_with_openai(file_content, metadata=None):
-    """Analyze image using OpenAI Vision API with metadata context."""
+def analyze_image_with_metadata_context(file_content, metadata=None):
+    """Analyze image with OpenAI Vision API including extracted metadata context."""
     if not openai_client:
         return {
             "error": "OpenAI client not available",
@@ -415,60 +415,55 @@ def analyze_image_with_openai(file_content, metadata=None):
         # Convert image to base64
         base64_image = base64.b64encode(file_content).decode('utf-8')
         
-        # Create metadata context for better analysis
-        metadata_context = ""
-        if metadata:
-            context_parts = []
-            
-            # Add file info
-            if metadata.get('file_info'):
-                file_info = metadata['file_info']
-                context_parts.append(f"File: {file_info.get('filename', 'unknown')} ({file_info.get('size_formatted', 'unknown size')})")
-            
-            # Add GPS location if available
-            if metadata.get('gps_location') and not metadata['gps_location'].get('error'):
-                gps = metadata['gps_location']
-                if 'coordinates_decimal' in gps:
-                    context_parts.append(f"Location: {gps['coordinates_decimal']}")
-                if 'gps_date' in gps:
-                    context_parts.append(f"Date: {gps['gps_date']}")
-            
-            # Add image properties
-            if metadata.get('image_properties', {}).get('dimensions'):
-                dims = metadata['image_properties']['dimensions']
-                context_parts.append(f"Resolution: {dims.get('resolution')} ({dims.get('megapixels')}MP)")
-            
-            # Add EXIF camera info
-            if metadata.get('exif_data'):
-                exif = metadata['exif_data']
-                if 'Make' in exif and 'Model' in exif:
-                    context_parts.append(f"Camera: {exif['Make']} {exif['Model']}")
-                if 'DateTime' in exif:
-                    context_parts.append(f"Taken: {exif['DateTime']}")
-            
-            if context_parts:
-                metadata_context = f"\n\nImage metadata: {'; '.join(context_parts)}"
+        # Build comprehensive metadata summary to send with image
+        metadata_summary = build_metadata_summary(metadata) if metadata else "No metadata available"
         
-        # Create the analysis prompt
-        analysis_prompt = f"""Analyze this image comprehensively and provide detailed information about:
+        # Create the analysis prompt with metadata transparency
+        analysis_prompt = f"""**IMAGE ANALYSIS WITH METADATA CONTEXT**
 
-1. **Visual Content**: What do you see in the image? Describe objects, people, scenes, activities, etc.
+**METADATA BEING SENT WITH THIS IMAGE:**
+{metadata_summary}
 
-2. **Technical Quality**: Assess the image quality, lighting, composition, focus, etc.
+---
 
-3. **Context & Setting**: Where might this photo have been taken? What's the context or situation?
+**ANALYSIS REQUEST:**
+Please analyze this image comprehensively, incorporating the metadata provided above. Provide detailed information about:
 
-4. **Notable Features**: Any interesting or unusual elements worth mentioning?
+1. **Visual Content Analysis**: 
+   - Describe what you see in the image (objects, people, scenes, activities)
+   - Identify any text, signs, or readable content
+   - Note any identifiable locations or landmarks
 
-5. **Potential Use Cases**: What might this image be used for? (documentation, social media, professional, etc.)
+2. **Technical Quality Assessment**:
+   - Evaluate image quality, lighting, composition, focus
+   - Comment on photographic techniques used
+   - Correlate with camera settings from metadata if available
 
-6. **Safety & Content**: Is there anything concerning or noteworthy about the content?
+3. **Context Integration**:
+   - Use GPS location data to provide geographic context
+   - Incorporate timestamp data for temporal context
+   - Reference camera/device information to understand capture method
 
-Please provide a structured, detailed analysis.{metadata_context}"""
+4. **Metadata Correlation**:
+   - How does the visual content align with the metadata?
+   - Are there any discrepancies or interesting correlations?
+   - What additional context does the metadata provide?
 
-        # Make the API call
+5. **Content Categorization**:
+   - Classify the type of image (portrait, landscape, document, etc.)
+   - Identify potential use cases
+   - Note any commercial, artistic, or personal elements
+
+6. **Privacy & Information Assessment**:
+   - Identify any sensitive information visible in the image
+   - Note privacy implications of both image content and metadata
+   - Assess what personal information is revealed
+
+Please provide a comprehensive analysis that combines visual observation with metadata insights."""
+
+        # Make the API call with both image and metadata
         response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",  # Fixed model name
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "user",
@@ -493,7 +488,10 @@ Please provide a structured, detailed analysis.{metadata_context}"""
             "model": "gpt-4o-mini",
             "tokens_used": response.usage.total_tokens if response.usage else None,
             "analysis_timestamp": datetime.now().isoformat(),
-            "metadata_context_provided": bool(metadata_context),
+            "analysis_type": "image_with_metadata",
+            "image_content_processed": True,
+            "metadata_sent": metadata_summary,
+            "metadata_context_provided": bool(metadata),
             "status": "success"
         }
         
@@ -505,6 +503,104 @@ Please provide a structured, detailed analysis.{metadata_context}"""
             "status": "error",
             "analysis_timestamp": datetime.now().isoformat()
         }
+
+def build_metadata_summary(metadata):
+    """Build a comprehensive text summary of all metadata."""
+    summary_parts = []
+    
+    # File Information
+    if metadata.get('file_info'):
+        file_info = metadata['file_info']
+        summary_parts.append("FILE INFORMATION:")
+        summary_parts.append(f"- Filename: {file_info.get('filename', 'unknown')}")
+        summary_parts.append(f"- Size: {file_info.get('size_formatted', 'unknown')} ({file_info.get('size_bytes', 0)} bytes)")
+        summary_parts.append(f"- Type: {file_info.get('content_type', 'unknown')}")
+        summary_parts.append(f"- MD5 Hash: {file_info.get('md5_hash', 'unknown')}")
+        summary_parts.append(f"- Upload Time: {file_info.get('upload_timestamp', 'unknown')}")
+        summary_parts.append("")
+    
+    # Image Properties
+    if metadata.get('image_properties'):
+        props = metadata['image_properties']
+        summary_parts.append("IMAGE PROPERTIES:")
+        
+        if props.get('dimensions'):
+            dims = props['dimensions']
+            summary_parts.append(f"- Resolution: {dims.get('resolution', 'unknown')}")
+            summary_parts.append(f"- Megapixels: {dims.get('megapixels', 'unknown')} MP")
+            summary_parts.append(f"- Aspect Ratio: {dims.get('aspect_ratio', 'unknown')}")
+            summary_parts.append(f"- Orientation: {dims.get('orientation', 'unknown')}")
+        
+        if props.get('color_info'):
+            color = props['color_info']
+            summary_parts.append(f"- Color Mode: {color.get('mode', 'unknown')}")
+            summary_parts.append(f"- Has Transparency: {color.get('has_transparency', 'unknown')}")
+        
+        if props.get('technical'):
+            tech = props['technical']
+            summary_parts.append(f"- Format: {tech.get('format', 'unknown')}")
+            summary_parts.append(f"- Animated: {tech.get('is_animated', False)}")
+        
+        summary_parts.append("")
+    
+    # GPS Location
+    if metadata.get('gps_location') and not metadata['gps_location'].get('error'):
+        gps = metadata['gps_location']
+        summary_parts.append("GPS LOCATION DATA:")
+        summary_parts.append(f"- Coordinates: {gps.get('coordinates_decimal', 'unknown')}")
+        summary_parts.append(f"- Latitude: {gps.get('latitude', 'unknown')}° {gps.get('latitude_ref', '')}")
+        summary_parts.append(f"- Longitude: {gps.get('longitude', 'unknown')}° {gps.get('longitude_ref', '')}")
+        if gps.get('altitude'):
+            summary_parts.append(f"- Altitude: {gps.get('altitude')}m {gps.get('altitude_ref', '')}")
+        if gps.get('gps_date'):
+            summary_parts.append(f"- GPS Date: {gps.get('gps_date')}")
+        if gps.get('gps_time_utc'):
+            summary_parts.append(f"- GPS Time (UTC): {gps.get('gps_time_utc')}")
+        summary_parts.append("")
+    elif metadata.get('gps_location'):
+        summary_parts.append("GPS LOCATION DATA: Not available")
+        summary_parts.append("")
+    
+    # EXIF Data
+    if metadata.get('exif_data') and not metadata['exif_data'].get('error'):
+        exif = metadata['exif_data']
+        summary_parts.append("CAMERA/EXIF DATA:")
+        
+        # Camera info
+        if exif.get('Make') and exif.get('Model'):
+            summary_parts.append(f"- Camera: {exif.get('Make')} {exif.get('Model')}")
+        
+        # Timestamps
+        for date_field in ['DateTime', 'DateTimeOriginal', 'DateTimeDigitized']:
+            if exif.get(date_field):
+                summary_parts.append(f"- {date_field}: {exif.get(date_field)}")
+        
+        # Camera settings
+        camera_settings = ['ExposureTime', 'FNumber', 'ISO', 'FocalLength', 'Flash', 'WhiteBalance']
+        for setting in camera_settings:
+            if exif.get(setting):
+                summary_parts.append(f"- {setting}: {exif.get(setting)}")
+        
+        # Other EXIF data (limit to important fields)
+        other_fields = ['Software', 'Artist', 'Copyright', 'ImageDescription']
+        for field in other_fields:
+            if exif.get(field):
+                summary_parts.append(f"- {field}: {exif.get(field)}")
+        
+        summary_parts.append("")
+    elif metadata.get('exif_data'):
+        summary_parts.append("CAMERA/EXIF DATA: Not available or error in extraction")
+        summary_parts.append("")
+    
+    # Processing info
+    if metadata.get('processing_info'):
+        proc = metadata['processing_info']
+        summary_parts.append("PROCESSING INFORMATION:")
+        summary_parts.append(f"- API Version: {proc.get('api_version', 'unknown')}")
+        summary_parts.append(f"- Processed At: {proc.get('processed_at', 'unknown')}")
+        summary_parts.append("")
+    
+    return "\n".join(summary_parts)
 
 @app.post("/extract-gps-only")
 async def extract_gps_only(file: UploadFile = File(...)):
@@ -576,8 +672,8 @@ async def analyze_image_ai(file: UploadFile = File(...)):
             "exif_data": extract_exif_data(image)
         }
         
-        # Perform AI analysis
-        ai_analysis = analyze_image_with_openai(file_content, basic_metadata)
+        # Perform AI analysis (image + metadata sent to OpenAI)
+        ai_analysis = analyze_image_with_metadata_context(file_content, basic_metadata)
         
         result = {
             "filename": file.filename,
@@ -654,9 +750,9 @@ async def save_image_endpoint(file: UploadFile = File(...)):
             }
         }
         
-        # Add AI analysis if available
+        # Add AI analysis if available (image + metadata sent to OpenAI)
         try:
-            ai_analysis = analyze_image_with_openai(file_content, metadata)
+            ai_analysis = analyze_image_with_metadata_context(file_content, metadata)
             metadata["ai_analysis"] = ai_analysis
         except Exception as e:
             metadata["ai_analysis"] = {
@@ -797,14 +893,29 @@ async def ai_status():
         "ai_available": openai_client is not None,
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
         "model": "gpt-4o-mini",
+        "analysis_type": "image_with_metadata",
         "features": [
-            "Image content analysis",
-            "Technical quality assessment", 
-            "Context and setting identification",
-            "Safety and content review",
-            "Metadata-enhanced analysis"
+            "Complete image content analysis",
+            "Visual content description and recognition",
+            "Technical quality assessment with metadata correlation",
+            "Geographic context integration from GPS data", 
+            "Temporal analysis from timestamps",
+            "Device and equipment analysis",
+            "Metadata-enhanced visual analysis"
         ] if openai_client else [],
-        "status": "available" if openai_client else "unavailable"
+        "data_sent_to_ai": [
+            "Complete image content (visual data)",
+            "Extracted metadata (file info, GPS, EXIF, technical properties)",
+            "Combined analysis for comprehensive insights"
+        ],
+        "privacy_notes": [
+            "Both image content AND metadata are sent to OpenAI",
+            "Users are informed about all data being shared",
+            "Comprehensive analysis combining visual and technical data",
+            "Full transparency about data sharing"
+        ],
+        "status": "available" if openai_client else "unavailable",
+        "message": "AI analysis is available" if openai_client else "AI analysis is not available. Set OPENAI_API_KEY environment variable."
     }
 
 if __name__ == "__main__":

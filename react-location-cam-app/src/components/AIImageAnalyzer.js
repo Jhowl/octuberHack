@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import MetadataDisclosure from './MetadataDisclosure';
 
 const AIImageAnalyzer = ({ imageFile, imageUrl }) => {
   const [aiResult, setAiResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showMetadataDisclosure, setShowMetadataDisclosure] = useState(false);
+  const [extractedMetadata, setExtractedMetadata] = useState(null);
   const [apiEndpoint, setApiEndpoint] = useState(
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
       ? 'http://localhost:8000' 
@@ -15,8 +18,35 @@ const AIImageAnalyzer = ({ imageFile, imageUrl }) => {
       return;
     }
     
+    // First extract metadata to show user what will be sent
+    try {
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      
+      const metadataResponse = await fetch(`${apiEndpoint}/extract-metadata`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (metadataResponse.ok) {
+        const metadataData = await metadataResponse.json();
+        setExtractedMetadata(metadataData);
+        setShowMetadataDisclosure(true);
+      } else {
+        // Proceed without metadata disclosure if extraction fails
+        proceedWithAIAnalysis();
+      }
+    } catch (error) {
+      console.error('Metadata extraction failed:', error);
+      // Proceed without metadata disclosure if extraction fails
+      proceedWithAIAnalysis();
+    }
+  };
+
+  const proceedWithAIAnalysis = async () => {
     setIsAnalyzing(true);
     setAiResult(null);
+    setShowMetadataDisclosure(false);
     
     try {
       const formData = new FormData();
@@ -169,8 +199,24 @@ const AIImageAnalyzer = ({ imageFile, imageUrl }) => {
                     <span className="value">{aiResult.ai_analysis?.model}</span>
                   </div>
                   <div className="metadata-item">
+                    <span className="label">Analysis Type:</span>
+                    <span className="value">{aiResult.ai_analysis?.analysis_type || 'N/A'}</span>
+                  </div>
+                  <div className="metadata-item">
                     <span className="label">Tokens Used:</span>
                     <span className="value">{aiResult.ai_analysis?.tokens_used || 'N/A'}</span>
+                  </div>
+                  <div className="metadata-item">
+                    <span className="label">Image Processed:</span>
+                    <span className="value">
+                      {aiResult.ai_analysis?.image_content_processed ? '✅ Yes' : '❌ No'}
+                    </span>
+                  </div>
+                  <div className="metadata-item">
+                    <span className="label">Metadata Sent:</span>
+                    <span className="value">
+                      {aiResult.ai_analysis?.metadata_context_provided ? '✅ Yes' : '❌ No'}
+                    </span>
                   </div>
                   <div className="metadata-item">
                     <span className="label">Analysis Time:</span>
@@ -179,18 +225,39 @@ const AIImageAnalyzer = ({ imageFile, imageUrl }) => {
                         new Date(aiResult.ai_analysis.analysis_timestamp).toLocaleString() : 'N/A'}
                     </span>
                   </div>
-                  <div className="metadata-item">
-                    <span className="label">Metadata Context:</span>
-                    <span className="value">
-                      {aiResult.ai_analysis?.metadata_context_provided ? '✅ Yes' : '❌ No'}
-                    </span>
-                  </div>
                 </div>
               </div>
+              
+              {aiResult.ai_analysis?.metadata_sent && (
+                <div className="metadata-sent-section">
+                  <h5>📋 Metadata Sent to AI</h5>
+                  <div className="metadata-sent-preview">
+                    <pre>{aiResult.ai_analysis.metadata_sent.substring(0, 500)}...</pre>
+                    <button 
+                      className="btn-small"
+                      onClick={() => setShowMetadataDisclosure(true)}
+                    >
+                      View Full Metadata Sent
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
+      
+      <MetadataDisclosure
+        metadata={extractedMetadata}
+        isVisible={showMetadataDisclosure}
+        onClose={() => {
+          setShowMetadataDisclosure(false);
+          if (isAnalyzing === false) {
+            // If user is seeing disclosure before analysis, proceed with analysis
+            proceedWithAIAnalysis();
+          }
+        }}
+      />
     </div>
   );
 };

@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react';
 import ImageAnalysis from './ImageAnalysis';
-import InformationExtractor from './InformationExtractor';
-import OCRExtractor from './OCRExtractor';
+// import InformationExtractor from './InformationExtractor';
+// import OCRExtractor from './OCRExtractor';
 import MetadataExtractor from './MetadataExtractor';
 import APIMetadataExtractor from './APIMetadataExtractor';
 import AIImageAnalyzer from './AIImageAnalyzer';
-import ImageDashboard from './ImageDashboard';
+// import ImageDashboard from './ImageDashboard';
 
 const ImageUploader = () => {
   const [uploadedImages, setUploadedImages] = useState([]);
@@ -176,10 +176,10 @@ const ImageUploader = () => {
               </div>
 
               <div className="analysis-components">
-                <ImageDashboard
+                {/* <ImageDashboard
                   imageFile={image.file}
                   imageUrl={image.url}
-                />
+                /> */}
 
                 <details className="advanced-tools">
                   <summary>🔧 Advanced Analysis Tools</summary>
@@ -200,13 +200,13 @@ const ImageUploader = () => {
                       imageBlob={image.blob}
                       imageUrl={image.url}
                     />
-                    <InformationExtractor
+                    {/* <InformationExtractor
                       imageBlob={image.blob}
                       imageUrl={image.url}
                     />
                     <OCRExtractor
                       imageUrl={image.url}
-                    />
+                    /> */}
                   </div>
                 </details>
               </div>

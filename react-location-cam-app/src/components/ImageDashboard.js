@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import ImageSaver from './ImageSaver';
+import PrivacyNotice from './PrivacyNotice';
 
 const ImageDashboard = ({ imageFile, imageUrl }) => {
   const [allData, setAllData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [apiEndpoint] = useState(
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
       ? 'http://localhost:8000' 
@@ -13,6 +16,12 @@ const ImageDashboard = ({ imageFile, imageUrl }) => {
 
   const extractAllData = async () => {
     if (!imageFile) return;
+    
+    // Show privacy notice if user hasn't consented yet
+    if (!privacyConsent) {
+      setShowPrivacyNotice(true);
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -37,6 +46,18 @@ const ImageDashboard = ({ imageFile, imageUrl }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePrivacyAccept = () => {
+    setPrivacyConsent(true);
+    setShowPrivacyNotice(false);
+    // Proceed with analysis
+    extractAllData();
+  };
+
+  const handlePrivacyDecline = () => {
+    setShowPrivacyNotice(false);
+    // Don't proceed with analysis
   };
 
   const downloadAllData = () => {

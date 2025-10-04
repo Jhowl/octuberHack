@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import ImageAnalysis from './ImageAnalysis';
-import InformationExtractor from './InformationExtractor';
-import OCRExtractor from './OCRExtractor';
+// import InformationExtractor from './InformationExtractor';
+// import OCRExtractor from './OCRExtractor';
 
 const CameraSection = () => {
   const [stream, setStream] = useState(null);
@@ -225,13 +225,13 @@ const CameraSection = () => {
                 imageBlob={image.blob} 
                 imageUrl={image.url}
               />
-              <InformationExtractor 
+              {/* <InformationExtractor 
                 imageBlob={image.blob} 
                 imageUrl={image.url}
-              />
-              <OCRExtractor 
+              /> */}
+              {/* <OCRExtractor 
                 imageUrl={image.url}
-              />
+              /> */}
             </div>
           ))}
         </div>
