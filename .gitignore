@@ -1,0 +1,114 @@
+# Root level gitignore for the entire project
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files and directories
+tmp/
+temp/
+.tmp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Image files (test/sample images)
+test_*.jpg
+test_*.jpeg
+test_*.png
+test_*.gif
+test_*.bmp
+test_*.webp
+sample_*.jpg
+sample_*.jpeg
+sample_*.png
+captured_*.jpg
+captured_*.png
+photo_*.jpg
+photo_*.png
+
+# Analysis and metadata files
+metadata_*.json
+analysis_*.json
+extracted_*.txt
+location_*.json
+*_response.json
+api_*.json
+
+# Documentation build
+docs/_build/
+site/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Dependency directories (covered by individual .gitignores but added for safety)
+node_modules/
+__pycache__/
+*.pyc
+venv/
+env/
+
+# Build outputs
+build/
+dist/
+out/
+
+# Package files
+*.tgz
+*.tar.gz
+
+# Local configuration files
+config.local.*
+settings.local.*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+.npm/
+.yarn/
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
