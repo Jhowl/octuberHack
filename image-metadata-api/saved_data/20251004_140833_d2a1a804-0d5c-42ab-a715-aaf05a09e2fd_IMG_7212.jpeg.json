@@ -1,0 +1,90 @@
+{
+  "image_id": "d2a1a804-0d5c-42ab-a715-aaf05a09e2fd",
+  "original_filename": "IMG_7212.jpeg",
+  "saved_filename": "20251004_140833_d2a1a804-0d5c-42ab-a715-aaf05a09e2fd_IMG_7212.jpeg",
+  "saved_at": "2025-10-04T14:08:33.475674",
+  "file_size": 7306088,
+  "metadata": {
+    "file_info": {
+      "filename": "IMG_7212.jpeg",
+      "size_bytes": 7306088,
+      "size_formatted": "6.97 MB",
+      "content_type": "image/jpeg",
+      "md5_hash": "40f427f1f5cf5c6e76fee52bf91d27c8",
+      "upload_timestamp": "2025-10-04T14:08:32.617026"
+    },
+    "image_properties": {
+      "dimensions": {
+        "width": 3024,
+        "height": 4032,
+        "resolution": "3024x4032",
+        "aspect_ratio": 0.75,
+        "megapixels": 12.19,
+        "orientation": "portrait"
+      },
+      "color_info": {
+        "mode": "RGB",
+        "has_transparency": false,
+        "color_palette_size": 316993
+      },
+      "technical": {
+        "format": "MPO",
+        "format_description": "MPO (CIPA DC-007)",
+        "is_animated": true,
+        "n_frames": 2
+      }
+    },
+    "exif_data": {
+      "ResolutionUnit": 2,
+      "ExifOffset": 236,
+      "Make": "Apple",
+      "Model": "iPhone 15 Pro",
+      "Software": "26.0.1",
+      "Orientation": 1,
+      "DateTime": "2025:10:04 11:14:24",
+      "YCbCrPositioning": 1,
+      "XResolution": "72.0",
+      "YResolution": "72.0",
+      "HostComputer": "iPhone 15 Pro"
+    },
+    "gps_location": {
+      "latitude": 40.73967778,
+      "longitude": -73.98957778,
+      "latitude_ref": "N",
+      "longitude_ref": "W",
+      "coordinates_decimal": "40.73967778, -73.98957778",
+      "google_maps_url": "https://maps.google.com/?q=40.73967778,-73.98957778",
+      "openstreetmap_url": "https://www.openstreetmap.org/?mlat=40.73967778&mlon=-73.98957778&zoom=15",
+      "gps_date": "2025:10:04",
+      "gps_time_utc": "15:14:24",
+      "raw_gps_data": {
+        "GPSLatitudeRef": "N",
+        "GPSLatitude": "(40.0, 44.0, 22.84)",
+        "GPSLongitudeRef": "W",
+        "GPSLongitude": "(73.0, 59.0, 22.48)",
+        "GPSAltitudeRef": "b'\\x00'",
+        "GPSAltitude": "15.418514104092173",
+        "GPSTimeStamp": "(15.0, 14.0, 24.0)",
+        "GPSSpeedRef": "K",
+        "GPSSpeed": "0.0",
+        "GPSImgDirectionRef": "T",
+        "GPSImgDirection": "91.46642302421196",
+        "GPSDestBearingRef": "T",
+        "GPSDestBearing": "91.46642302421196",
+        "GPSDateStamp": "2025:10:04",
+        "GPSHPositioningError": "26.675328154299493"
+      }
+    },
+    "processing_info": {
+      "api_version": "1.1.0",
+      "processed_at": "2025-10-04T14:08:32.949903"
+    },
+    "ai_analysis": {
+      "error": "OpenAI analysis failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: \"sk-proj**********************************************************************************************************************************************************pwA\". You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
+      "status": "error",
+      "analysis_timestamp": "2025-10-04T14:08:33.469672"
+    },
+    "status": "success",
+    "message": "Metadata extracted successfully"
+  }
+}
