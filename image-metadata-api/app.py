@@ -19,11 +19,23 @@ app = FastAPI(
 )
 
 # Enable CORS for React app
+# Get allowed origins from environment or use defaults
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else [
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
+    "http://138.197.21.64:3000",
+    "https://138.197.21.64:3000",
+]
+
+# Add wildcard for development
+if os.getenv("ENVIRONMENT") == "development":
+    allowed_origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # React dev server
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

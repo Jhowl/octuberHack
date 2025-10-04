@@ -3,7 +3,11 @@ import { useState } from 'react';
 const APIMetadataExtractor = ({ imageFile, imageUrl }) => {
     const [apiResult, setApiResult] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [apiEndpoint, setApiEndpoint] = useState('http://localhost:8000');
+    const [apiEndpoint, setApiEndpoint] = useState(
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? 'http://localhost:8000' 
+      : `http://${window.location.hostname}:8000`
+  );
 
     const extractWithAPI = async (endpoint = 'extract-metadata') => {
         if (!imageFile) {
