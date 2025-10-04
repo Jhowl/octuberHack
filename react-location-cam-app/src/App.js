@@ -1,6 +1,6 @@
 import React from 'react';
 import LocationSection from './components/LocationSection';
-import CameraSection from './components/CameraSection';
+// import CameraSection from './components/CameraSection';
 import ImageUploader from './components/ImageUploader';
 
 function App() {
@@ -13,7 +13,7 @@ function App() {
       
       <main>
         <LocationSection />
-        <CameraSection />
+        {/* <CameraSection /> */}
         <ImageUploader />
       </main>
     </div>
