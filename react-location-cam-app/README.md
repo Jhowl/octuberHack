@@ -12,12 +12,14 @@ A comprehensive React-based web application that captures images and extracts de
 - **Download Photos**: Save captured images locally
 
 ### Information Extraction
-- **📍 GPS Location Extraction**: Extract GPS coordinates embedded in image EXIF data
-- **📊 Detailed Metadata**: Comprehensive file info, dimensions, EXIF detection, and technical details
-- **🎨 Image Analysis**: Extract color palettes, brightness, contrast, and visual properties
+- **🤖 AI-Powered Analysis**: OpenAI Vision API integration for intelligent image content analysis
+- **📊 Interactive Dashboard**: Comprehensive tabbed interface showing all extracted information
+- **📍 GPS Location Extraction**: Extract GPS coordinates embedded in image EXIF data with map links
+- **📊 Detailed Metadata**: File info, dimensions, technical properties, and hash verification
+- **🎨 Visual Analysis**: Color palettes, brightness, contrast, and composition analysis
 - **📝 OCR Text Recognition**: Extract text from images (demo mode included, see OCR_SETUP.md for real OCR)
 - **📱 Device Location**: Capture current GPS coordinates with each photo
-- **🔧 EXIF Support**: Basic EXIF detection with enhancement suggestions (see EXIF_SETUP.md)
+- **🔧 EXIF Support**: Complete EXIF data extraction with camera settings and timestamps
 - **📁 Multiple Formats**: Support for JPG, PNG, GIF, WebP, BMP files
 
 ### Advanced Features
@@ -73,12 +75,12 @@ npm run build
 4. **Analysis**: Each image (captured or uploaded) can be analyzed with multiple tools
 
 ### Information Extraction Tools
-1. **📍 GPS Location Extractor**: Extract GPS coordinates from image EXIF data
-2. **📊 Detailed Metadata**: Extract comprehensive file and image properties
-3. **🎨 Image Analysis**: Analyze colors, brightness, contrast, and visual properties  
-4. **📋 Information Extractor**: Get device info, current location data, and technical details
-5. **📝 OCR Text Recognition**: Extract text from images with confidence scores
-6. **💾 Export Options**: Download data as JSON, copy coordinates/text to clipboard
+1. **📊 Interactive Dashboard**: Comprehensive tabbed interface with overview, AI analysis, location, technical data, and EXIF information
+2. **🤖 AI Image Analysis**: OpenAI-powered content analysis, quality assessment, and context identification
+3. **📍 GPS Location Extractor**: Extract GPS coordinates from image EXIF data with interactive maps
+4. **🔧 Advanced Analysis Tools**: Detailed metadata extraction, color analysis, and technical properties
+5. **📝 OCR Text Recognition**: Extract text from images with confidence scores and statistics
+6. **💾 Export Options**: Download complete analysis as JSON, copy specific data to clipboard
 
 ### What Information is Extracted
 - **Image Metadata**: Dimensions, file size, format, aspect ratio

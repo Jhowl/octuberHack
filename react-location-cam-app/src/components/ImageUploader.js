@@ -4,6 +4,8 @@ import InformationExtractor from './InformationExtractor';
 import OCRExtractor from './OCRExtractor';
 import MetadataExtractor from './MetadataExtractor';
 import APIMetadataExtractor from './APIMetadataExtractor';
+import AIImageAnalyzer from './AIImageAnalyzer';
+import ImageDashboard from './ImageDashboard';
 
 const ImageUploader = () => {
   const [uploadedImages, setUploadedImages] = useState([]);
@@ -11,7 +13,7 @@ const ImageUploader = () => {
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (files) => {
-    const imageFiles = Array.from(files).filter(file => 
+    const imageFiles = Array.from(files).filter(file =>
       file.type.startsWith('image/')
     );
 
@@ -29,7 +31,7 @@ const ImageUploader = () => {
           lastModified: new Date(file.lastModified).toLocaleString(),
           uploadTime: new Date().toLocaleString()
         };
-        
+
         setUploadedImages(prev => [imageData, ...prev]);
       };
       reader.readAsDataURL(file);
@@ -91,13 +93,13 @@ const ImageUploader = () => {
           lastModified: new Date(file.lastModified).toLocaleString(),
           uploadTime: new Date().toLocaleString()
         };
-        
+
         // Try to extract EXIF data if available
         if (file.type === 'image/jpeg') {
           // Note: Full EXIF extraction requires a library like exif-js
           metadata.note = "For full EXIF data (GPS, camera settings), install exif-js library";
         }
-        
+
         resolve(metadata);
       };
       img.src = URL.createObjectURL(file);
@@ -107,8 +109,8 @@ const ImageUploader = () => {
   return (
     <div className="section">
       <h2>Upload Images for Analysis</h2>
-      
-      <div 
+
+      <div
         className={`upload-area ${isDragging ? 'dragging' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -122,7 +124,7 @@ const ImageUploader = () => {
           <p>Multiple files supported</p>
         </div>
       </div>
-      
+
       <input
         ref={fileInputRef}
         type="file"
@@ -131,11 +133,11 @@ const ImageUploader = () => {
         onChange={handleFileInputChange}
         style={{ display: 'none' }}
       />
-      
+
       {uploadedImages.length > 0 && (
         <div className="uploaded-images">
           <h3>Uploaded Images ({uploadedImages.length})</h3>
-          
+
           {uploadedImages.map((image) => (
             <div key={image.id} className="uploaded-image-container">
               <div className="image-header">
@@ -148,14 +150,14 @@ const ImageUploader = () => {
                   </div>
                 </div>
                 <div className="image-actions">
-                  <button 
+                  <button
                     className="btn-small"
                     onClick={() => downloadImage(image)}
                     title="Download"
                   >
                     ⬇️
                   </button>
-                  <button 
+                  <button
                     className="btn-small btn-danger"
                     onClick={() => removeImage(image.id)}
                     title="Remove"
@@ -164,7 +166,7 @@ const ImageUploader = () => {
                   </button>
                 </div>
               </div>
-              
+
               <div className="image-preview">
                 <img
                   src={image.url}
@@ -172,33 +174,47 @@ const ImageUploader = () => {
                   className="uploaded-image"
                 />
               </div>
-              
+
               <div className="analysis-components">
-                <APIMetadataExtractor 
-                  imageFile={image.file} 
+                <ImageDashboard
+                  imageFile={image.file}
                   imageUrl={image.url}
                 />
-                <MetadataExtractor 
-                  imageFile={image.file} 
-                  imageUrl={image.url}
-                />
-                <ImageAnalysis 
-                  imageBlob={image.blob} 
-                  imageUrl={image.url}
-                />
-                <InformationExtractor 
-                  imageBlob={image.blob} 
-                  imageUrl={image.url}
-                />
-                <OCRExtractor 
-                  imageUrl={image.url}
-                />
+
+                <details className="advanced-tools">
+                  <summary>🔧 Advanced Analysis Tools</summary>
+                  <div className="advanced-tools-content">
+                    <AIImageAnalyzer
+                      imageFile={image.file}
+                      imageUrl={image.url}
+                    />
+                    <APIMetadataExtractor
+                      imageFile={image.file}
+                      imageUrl={image.url}
+                    />
+                    <MetadataExtractor
+                      imageFile={image.file}
+                      imageUrl={image.url}
+                    />
+                    <ImageAnalysis
+                      imageBlob={image.blob}
+                      imageUrl={image.url}
+                    />
+                    <InformationExtractor
+                      imageBlob={image.blob}
+                      imageUrl={image.url}
+                    />
+                    <OCRExtractor
+                      imageUrl={image.url}
+                    />
+                  </div>
+                </details>
               </div>
             </div>
           ))}
         </div>
       )}
-      
+
       {uploadedImages.length === 0 && (
         <div className="no-images">
           <p>No images uploaded yet. Upload some images to start analyzing!</p>

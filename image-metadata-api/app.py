@@ -11,12 +11,40 @@ import os
 from typing import Optional, Dict, Any
 import json
 import traceback
+import base64
+from openai import OpenAI
+from dotenv import load_dotenv
+import shutil
+from pathlib import Path
+import uuid
+
+# Load environment variables
+load_dotenv()
+
+# Create directories for saved images and data
+SAVED_IMAGES_DIR = Path("saved_images")
+SAVED_DATA_DIR = Path("saved_data")
+SAVED_IMAGES_DIR.mkdir(exist_ok=True)
+SAVED_DATA_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(
     title="Image Metadata Extraction API",
-    description="Extract comprehensive metadata from uploaded images including EXIF, GPS, and technical details",
-    version="1.0.0"
+    description="Extract comprehensive metadata from uploaded images including EXIF, GPS, technical details, and AI analysis",
+    version="1.1.0"
 )
+
+# Initialize OpenAI client
+openai_client = None
+try:
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if openai_api_key:
+        openai_client = OpenAI(api_key=openai_api_key)
+        print("✅ OpenAI client initialized")
+    else:
+        print("⚠️  OPENAI_API_KEY not found. AI analysis will be disabled.")
+except Exception as e:
+    print(f"❌ Failed to initialize OpenAI client: {e}")
+    openai_client = None
 
 # Enable CORS for React app
 # Get allowed origins from environment or use defaults
@@ -248,20 +276,43 @@ async def extract_metadata(file: UploadFile = File(...)):
         except Exception as e:
             gps_location = {"error": f"Failed to extract GPS data: {str(e)}"}
         
+        # Build initial metadata
         metadata = {
             "file_info": file_info,
             "image_properties": image_properties,
             "exif_data": exif_data,
             "gps_location": gps_location,
             "processing_info": {
-                "api_version": "1.0.0",
+                "api_version": "1.1.0",
                 "processed_at": datetime.now().isoformat()
             }
         }
         
+        # Add AI analysis if OpenAI is available
+        try:
+            ai_analysis = analyze_image_with_openai(file_content, metadata)
+            metadata["ai_analysis"] = ai_analysis
+        except Exception as e:
+            metadata["ai_analysis"] = {
+                "error": f"AI analysis failed: {str(e)}",
+                "status": "error"
+            }
+        
         # Add success status
         metadata["status"] = "success"
         metadata["message"] = "Metadata extracted successfully"
+        
+        # Save image and metadata if enabled
+        save_images = os.getenv("SAVE_IMAGES", "false").lower() == "true"
+        if save_images:
+            try:
+                save_result = save_image_and_metadata(file_content, file.filename, metadata)
+                metadata["save_info"] = save_result
+            except Exception as e:
+                metadata["save_info"] = {
+                    "success": False,
+                    "error": f"Failed to save: {str(e)}"
+                }
         
         return JSONResponse(content=metadata)
         
@@ -292,6 +343,168 @@ def format_file_size(size_bytes):
         i += 1
     
     return f"{size_bytes:.2f} {size_names[i]}"
+
+def save_image_and_metadata(file_content, filename, metadata):
+    """Save image file and its metadata to disk."""
+    try:
+        # Generate unique ID for this image
+        image_id = str(uuid.uuid4())
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Clean filename and create safe name
+        safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
+        if not safe_filename:
+            safe_filename = "image"
+        
+        # Get file extension
+        file_ext = Path(filename).suffix.lower()
+        if not file_ext:
+            file_ext = ".jpg"  # Default extension
+        
+        # Create filenames
+        image_filename = f"{timestamp}_{image_id}_{safe_filename}"
+        if not image_filename.endswith(file_ext):
+            image_filename += file_ext
+        
+        metadata_filename = f"{timestamp}_{image_id}_{safe_filename}.json"
+        
+        # Save image file
+        image_path = SAVED_IMAGES_DIR / image_filename
+        with open(image_path, 'wb') as f:
+            f.write(file_content)
+        
+        # Prepare metadata for saving
+        save_metadata = {
+            "image_id": image_id,
+            "original_filename": filename,
+            "saved_filename": image_filename,
+            "saved_at": datetime.now().isoformat(),
+            "file_size": len(file_content),
+            "metadata": metadata
+        }
+        
+        # Save metadata file
+        metadata_path = SAVED_DATA_DIR / metadata_filename
+        with open(metadata_path, 'w') as f:
+            json.dump(save_metadata, f, indent=2, default=str)
+        
+        return {
+            "success": True,
+            "image_id": image_id,
+            "image_path": str(image_path),
+            "metadata_path": str(metadata_path),
+            "saved_filename": image_filename,
+            "saved_at": save_metadata["saved_at"]
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to save image: {str(e)}"
+        }
+
+def analyze_image_with_openai(file_content, metadata=None):
+    """Analyze image using OpenAI Vision API with metadata context."""
+    if not openai_client:
+        return {
+            "error": "OpenAI client not available",
+            "message": "Set OPENAI_API_KEY environment variable to enable AI analysis"
+        }
+    
+    try:
+        # Convert image to base64
+        base64_image = base64.b64encode(file_content).decode('utf-8')
+        
+        # Create metadata context for better analysis
+        metadata_context = ""
+        if metadata:
+            context_parts = []
+            
+            # Add file info
+            if metadata.get('file_info'):
+                file_info = metadata['file_info']
+                context_parts.append(f"File: {file_info.get('filename', 'unknown')} ({file_info.get('size_formatted', 'unknown size')})")
+            
+            # Add GPS location if available
+            if metadata.get('gps_location') and not metadata['gps_location'].get('error'):
+                gps = metadata['gps_location']
+                if 'coordinates_decimal' in gps:
+                    context_parts.append(f"Location: {gps['coordinates_decimal']}")
+                if 'gps_date' in gps:
+                    context_parts.append(f"Date: {gps['gps_date']}")
+            
+            # Add image properties
+            if metadata.get('image_properties', {}).get('dimensions'):
+                dims = metadata['image_properties']['dimensions']
+                context_parts.append(f"Resolution: {dims.get('resolution')} ({dims.get('megapixels')}MP)")
+            
+            # Add EXIF camera info
+            if metadata.get('exif_data'):
+                exif = metadata['exif_data']
+                if 'Make' in exif and 'Model' in exif:
+                    context_parts.append(f"Camera: {exif['Make']} {exif['Model']}")
+                if 'DateTime' in exif:
+                    context_parts.append(f"Taken: {exif['DateTime']}")
+            
+            if context_parts:
+                metadata_context = f"\n\nImage metadata: {'; '.join(context_parts)}"
+        
+        # Create the analysis prompt
+        analysis_prompt = f"""Analyze this image comprehensively and provide detailed information about:
+
+1. **Visual Content**: What do you see in the image? Describe objects, people, scenes, activities, etc.
+
+2. **Technical Quality**: Assess the image quality, lighting, composition, focus, etc.
+
+3. **Context & Setting**: Where might this photo have been taken? What's the context or situation?
+
+4. **Notable Features**: Any interesting or unusual elements worth mentioning?
+
+5. **Potential Use Cases**: What might this image be used for? (documentation, social media, professional, etc.)
+
+6. **Safety & Content**: Is there anything concerning or noteworthy about the content?
+
+Please provide a structured, detailed analysis.{metadata_context}"""
+
+        # Make the API call
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",  # Fixed model name
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": analysis_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}",
+                                "detail": "high"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=1500,
+            temperature=0.3
+        )
+        
+        analysis_result = {
+            "analysis": response.choices[0].message.content,
+            "model": "gpt-4o-mini",
+            "tokens_used": response.usage.total_tokens if response.usage else None,
+            "analysis_timestamp": datetime.now().isoformat(),
+            "metadata_context_provided": bool(metadata_context),
+            "status": "success"
+        }
+        
+        return analysis_result
+        
+    except Exception as e:
+        return {
+            "error": f"OpenAI analysis failed: {str(e)}",
+            "status": "error",
+            "analysis_timestamp": datetime.now().isoformat()
+        }
 
 @app.post("/extract-gps-only")
 async def extract_gps_only(file: UploadFile = File(...)):
@@ -326,6 +539,273 @@ async def extract_gps_only(file: UploadFile = File(...)):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error extracting GPS data: {str(e)}")
+
+@app.post("/analyze-image-ai")
+async def analyze_image_ai(file: UploadFile = File(...)):
+    """
+    Analyze image using OpenAI Vision API.
+    Provides detailed AI-powered analysis of image content, quality, and context.
+    """
+    
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    if not openai_client:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unavailable",
+                "message": "AI analysis not available. Set OPENAI_API_KEY environment variable.",
+                "filename": file.filename
+            }
+        )
+    
+    try:
+        file_content = await file.read()
+        
+        # Get basic metadata for context
+        image = Image.open(io.BytesIO(file_content))
+        basic_metadata = {
+            "file_info": {
+                "filename": file.filename,
+                "size_formatted": format_file_size(len(file_content)),
+                "content_type": file.content_type
+            },
+            "image_properties": analyze_image_properties(image),
+            "gps_location": extract_gps_info(image),
+            "exif_data": extract_exif_data(image)
+        }
+        
+        # Perform AI analysis
+        ai_analysis = analyze_image_with_openai(file_content, basic_metadata)
+        
+        result = {
+            "filename": file.filename,
+            "ai_analysis": ai_analysis,
+            "basic_metadata": basic_metadata,
+            "processed_at": datetime.now().isoformat()
+        }
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Error analyzing image: {str(e)}",
+                "filename": file.filename if file else "unknown"
+            }
+        )
+
+@app.post("/save-image")
+async def save_image_endpoint(file: UploadFile = File(...)):
+    """
+    Save uploaded image with complete metadata analysis.
+    Returns saved image information and analysis results.
+    """
+    
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    try:
+        # Read file content
+        file_content = await file.read()
+        file_size = len(file_content)
+        
+        # Create PIL Image
+        image = Image.open(io.BytesIO(file_content))
+        
+        # Extract metadata (same as main endpoint)
+        file_info = {
+            "filename": file.filename,
+            "size_bytes": file_size,
+            "size_formatted": format_file_size(file_size),
+            "content_type": file.content_type,
+            "md5_hash": calculate_file_hash(file_content),
+            "upload_timestamp": datetime.now().isoformat()
+        }
+        
+        # Extract each component safely
+        try:
+            image_properties = analyze_image_properties(image)
+        except Exception as e:
+            image_properties = {"error": f"Failed to analyze image properties: {str(e)}"}
+        
+        try:
+            exif_data = extract_exif_data(image)
+        except Exception as e:
+            exif_data = {"error": f"Failed to extract EXIF data: {str(e)}"}
+        
+        try:
+            gps_location = extract_gps_info(image)
+        except Exception as e:
+            gps_location = {"error": f"Failed to extract GPS data: {str(e)}"}
+        
+        # Build metadata
+        metadata = {
+            "file_info": file_info,
+            "image_properties": image_properties,
+            "exif_data": exif_data,
+            "gps_location": gps_location,
+            "processing_info": {
+                "api_version": "1.1.0",
+                "processed_at": datetime.now().isoformat()
+            }
+        }
+        
+        # Add AI analysis if available
+        try:
+            ai_analysis = analyze_image_with_openai(file_content, metadata)
+            metadata["ai_analysis"] = ai_analysis
+        except Exception as e:
+            metadata["ai_analysis"] = {
+                "error": f"AI analysis failed: {str(e)}",
+                "status": "error"
+            }
+        
+        # Save image and metadata
+        save_result = save_image_and_metadata(file_content, file.filename, metadata)
+        
+        if save_result["success"]:
+            result = {
+                "status": "success",
+                "message": "Image saved successfully with complete analysis",
+                "save_info": save_result,
+                "metadata": metadata
+            }
+        else:
+            result = {
+                "status": "error",
+                "message": "Failed to save image",
+                "error": save_result["error"],
+                "metadata": metadata
+            }
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        error_details = traceback.format_exc()
+        print(f"Error saving image: {error_details}")
+        
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Error saving image: {str(e)}",
+                "error_type": type(e).__name__,
+                "filename": file.filename if file else "unknown"
+            }
+        )
+
+@app.get("/saved-images")
+async def list_saved_images():
+    """List all saved images with their metadata."""
+    try:
+        saved_images = []
+        
+        # Get all metadata files
+        for metadata_file in SAVED_DATA_DIR.glob("*.json"):
+            try:
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                
+                # Check if image file still exists
+                image_path = SAVED_IMAGES_DIR / metadata.get("saved_filename", "")
+                image_exists = image_path.exists()
+                
+                saved_images.append({
+                    "image_id": metadata.get("image_id"),
+                    "original_filename": metadata.get("original_filename"),
+                    "saved_filename": metadata.get("saved_filename"),
+                    "saved_at": metadata.get("saved_at"),
+                    "file_size": metadata.get("file_size"),
+                    "image_exists": image_exists,
+                    "has_gps": not metadata.get("metadata", {}).get("gps_location", {}).get("error"),
+                    "has_ai_analysis": not metadata.get("metadata", {}).get("ai_analysis", {}).get("error"),
+                    "metadata_file": str(metadata_file)
+                })
+            except Exception as e:
+                print(f"Error reading metadata file {metadata_file}: {e}")
+                continue
+        
+        # Sort by saved_at timestamp (newest first)
+        saved_images.sort(key=lambda x: x.get("saved_at", ""), reverse=True)
+        
+        return {
+            "status": "success",
+            "count": len(saved_images),
+            "images": saved_images,
+            "storage_info": {
+                "images_directory": str(SAVED_IMAGES_DIR),
+                "metadata_directory": str(SAVED_DATA_DIR)
+            }
+        }
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Error listing saved images: {str(e)}"
+            }
+        )
+
+@app.get("/saved-images/{image_id}")
+async def get_saved_image_metadata(image_id: str):
+    """Get complete metadata for a specific saved image."""
+    try:
+        # Find metadata file for this image_id
+        metadata_file = None
+        for file_path in SAVED_DATA_DIR.glob("*.json"):
+            try:
+                with open(file_path, 'r') as f:
+                    metadata = json.load(f)
+                if metadata.get("image_id") == image_id:
+                    metadata_file = file_path
+                    break
+            except:
+                continue
+        
+        if not metadata_file:
+            raise HTTPException(status_code=404, detail=f"Image with ID {image_id} not found")
+        
+        with open(metadata_file, 'r') as f:
+            complete_metadata = json.load(f)
+        
+        return {
+            "status": "success",
+            "image_id": image_id,
+            "metadata": complete_metadata
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Error retrieving image metadata: {str(e)}"
+            }
+        )
+
+@app.get("/ai-status")
+async def ai_status():
+    """Check if AI analysis is available."""
+    return {
+        "ai_available": openai_client is not None,
+        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "model": "gpt-4o-mini",
+        "features": [
+            "Image content analysis",
+            "Technical quality assessment", 
+            "Context and setting identification",
+            "Safety and content review",
+            "Metadata-enhanced analysis"
+        ] if openai_client else [],
+        "status": "available" if openai_client else "unavailable"
+    }
 
 if __name__ == "__main__":
     uvicorn.run(

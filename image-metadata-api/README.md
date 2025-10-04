@@ -9,6 +9,7 @@ A FastAPI-based REST API that extracts comprehensive metadata from uploaded imag
 - **Image Properties**: Dimensions, aspect ratio, megapixels, color info, orientation
 - **EXIF Data**: Camera settings, timestamps, technical parameters
 - **GPS Location**: Coordinates, altitude, timestamps, map links
+- **AI Analysis**: OpenAI-powered image content analysis and description
 - **Processing Info**: API version, processing time, status
 
 ### 📍 **GPS Location Extraction**
@@ -21,9 +22,9 @@ A FastAPI-based REST API that extracts comprehensive metadata from uploaded imag
 ### 🚀 **API Endpoints**
 
 #### `POST /extract-metadata`
-Extract complete metadata from uploaded image
+Extract complete metadata from uploaded image (includes AI analysis)
 - **Input**: Image file (multipart/form-data)
-- **Output**: Comprehensive JSON metadata
+- **Output**: Comprehensive JSON metadata with AI analysis
 - **Supports**: JPG, PNG, GIF, BMP, WebP, TIFF
 
 #### `POST /extract-gps-only`
@@ -31,6 +32,32 @@ Extract only GPS location data (optimized)
 - **Input**: Image file (multipart/form-data)  
 - **Output**: GPS coordinates and location info
 - **Use Case**: When you only need location data
+
+#### `POST /analyze-image-ai`
+AI-powered image analysis using OpenAI Vision API
+- **Input**: Image file (multipart/form-data)
+- **Output**: Detailed AI analysis with metadata context
+- **Features**: Content analysis, quality assessment, context identification
+
+#### `POST /save-image`
+Save image permanently with complete metadata analysis
+- **Input**: Image file (multipart/form-data)
+- **Output**: Save confirmation with image ID and complete analysis
+- **Storage**: Saves both image file and metadata JSON
+
+#### `GET /saved-images`
+List all saved images with summary information
+- **Output**: Array of saved images with metadata summaries
+- **Info**: Image ID, filename, size, GPS/AI availability
+
+#### `GET /saved-images/{image_id}`
+Get complete metadata for a specific saved image
+- **Input**: Image ID (path parameter)
+- **Output**: Complete metadata and analysis results
+
+#### `GET /ai-status`
+Check AI analysis availability and configuration
+- **Output**: AI service status, model info, available features
 
 #### `GET /`
 API information and available endpoints
@@ -46,7 +73,25 @@ Interactive API documentation (Swagger UI)
 ### 1. **Install Dependencies**
 ```bash
 cd image-metadata-api
-pip install -r requirements.txt
+externally-managed-environment
+
+× This environment is externally managed
+╰─> To install Python packages system-wide, try apt install
+    python3-xyz, where xyz is the package you are trying to
+    install.
+    
+    If you wish to install a non-Debian-packaged Python package,
+    create a virtual environment using python3 -m venv path/to/venv.
+    Then use path/to/venv/bin/python and path/to/venv/bin/pip. Make
+    sure you have python3-full installed.
+    
+    If you wish to install a non-Debian packaged Python application,
+    it may be easiest to use pipx install xyz, which will manage a
+    virtual environment for you. Make sure you have pipx installed.
+    
+    See /usr/share/doc/python3.12/README.venv for more information.
+
+note: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.
 ```
 
 ### 2. **Run the API**

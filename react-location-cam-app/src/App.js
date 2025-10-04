@@ -7,8 +7,8 @@ function App() {
   return (
     <div className="container">
       <header>
-        <h1>Location & Camera React App</h1>
-        <p>Capture photos or upload images to extract detailed information</p>
+        <h1>AI-Powered Image Analysis Platform</h1>
+        <p>Capture photos or upload images to extract metadata, GPS location, and AI-powered insights</p>
       </header>
       
       <main>
