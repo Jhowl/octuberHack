@@ -36,7 +36,7 @@ app = FastAPI(
 # Initialize OpenAI client
 openai_client = None
 try:
-    openai_api_key = "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"
+    openai_api_key = os.getenv("OPENAI_API_KEY")
     if openai_api_key:
         openai_client = OpenAI(api_key=openai_api_key)
         print("✅ OpenAI client initialized")
